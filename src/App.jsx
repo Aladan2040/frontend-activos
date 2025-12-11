@@ -19,9 +19,16 @@ import {
     Download
 } from 'lucide-react';
 
-// URL dinámica (Vite usa import.meta.env para variables de entorno)
-// Nota: Si esto falla en entornos antiguos, usa http://localhost:8080/api/activos directamente.
-const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:8080/api/activos';
+// URL dinámica: Usa la variable de entorno en la nube, o localhost en tu PC
+let apiUrl = 'http://localhost:8080/api/activos';
+try {
+    if (import.meta && import.meta.env && import.meta.env.VITE_API_URL) {
+        apiUrl = import.meta.env.VITE_API_URL;
+    }
+} catch (e) {
+    console.warn("Usando localhost por defecto.");
+}
+const API_URL = apiUrl;
 
 function App() {
     const [activos, setActivos] = useState([]);
@@ -35,6 +42,9 @@ function App() {
     const [paginaActual, setPaginaActual] = useState(1);
     const [filasPorPagina, setFilasPorPagina] = useState(50);
     const [inputPagina, setInputPagina] = useState(1);
+
+    // Estado para controlar la carga de la librería de Excel
+    const [libreriaExcelCargada, setLibreriaExcelCargada] = useState(false);
 
     useEffect(() => {
         fetchData();
@@ -97,51 +107,80 @@ function App() {
         }
     };
 
-    // --- FUNCIÓN EXPORTAR A CSV (Nativa, sin librerías externas) ---
+    // --- FUNCIÓN EXPORTAR A .XLSX (REAL) USANDO CDN ---
     const exportarExcel = () => {
         if (activosFiltrados.length === 0) {
             mostrarMensaje("error", "No hay datos para exportar.");
             return;
         }
 
-        // 1. Definir Cabeceras
-        const headers = [
-            "Codigo", "CeCo", "Descripcion", "% Depre", "Acum. Inicio",
-            "Ene-25", "Feb-25", "Mar-25", "Abr-25", "May-25", "Jun-25",
-            "Jul-25", "Ago-25", "Set-25", "Oct-25", "Nov-25", "Dic-25",
-            "Total 2025", "Total Acumulado", "Costo Neto", "Valor Historico"
-        ];
+        const generarArchivo = () => {
+            // 1. Preparar los datos en formato JSON plano
+            const datosExcel = activosFiltrados.map(a => ({
+                "Código": a.codigo,
+                "CeCo": a.ceco || "",
+                "Descripción": a.descripcion,
+                "% Depre": a.porcentajeDepreciacion ? (a.porcentajeDepreciacion * 100).toFixed(0) + '%' : '0%',
+                "Acum. Inicio": a.depAcumuladaInicio,
 
-        // 2. Construir el contenido CSV
-        const csvContent = [
-            headers.join(','), // Fila de títulos
-            ...activosFiltrados.map(a => [
-                `"${a.codigo}"`, // Comillas para evitar romper el CSV si hay comas en el dato
-                `"${a.ceco || ""}"`,
-                `"${(a.descripcion || "").replace(/"/g, '""')}"`, // Escapar comillas dobles internas
-                `"${a.porcentajeDepreciacion ? (a.porcentajeDepreciacion * 100).toFixed(0) + '%' : '0%'}"`,
-                a.depAcumuladaInicio,
-                a.ene || 0, a.feb || 0, a.mar || 0, a.abr || 0, a.may || 0, a.jun || 0,
-                a.jul || 0, a.ago || 0, a.set || 0, a.oct || 0, a.nov || 0, a.dic || 0,
-                a.totalDepreciacion2025,
-                a.totalDepreciacionAcumulada,
-                a.costoNeto,
-                a.valorHistorico
-            ].join(','))
-        ].join('\n');
+                "Ene-25": a.ene || 0,
+                "Feb-25": a.feb || 0,
+                "Mar-25": a.mar || 0,
+                "Abr-25": a.abr || 0,
+                "May-25": a.may || 0,
+                "Jun-25": a.jun || 0,
+                "Jul-25": a.jul || 0,
+                "Ago-25": a.ago || 0,
+                "Set-25": a.set || 0,
+                "Oct-25": a.oct || 0,
+                "Nov-25": a.nov || 0,
+                "Dic-25": a.dic || 0,
 
-        // 3. Crear Blob y descargar
-        const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
-        const url = URL.createObjectURL(blob);
-        const link = document.createElement('a');
-        link.href = url;
-        const fecha = new Date().toISOString().split('T')[0];
-        link.setAttribute('download', `Reporte_Depreciacion_${fecha}.csv`);
-        document.body.appendChild(link);
-        link.click();
-        document.body.removeChild(link);
+                "Total 2025": a.totalDepreciacion2025,
+                "Total Acumulado": a.totalDepreciacionAcumulada,
+                "Costo Neto": a.costoNeto,
+                "Valor Histórico": a.valorHistorico
+            }));
 
-        mostrarMensaje("success", "Archivo CSV exportado correctamente (Compatible con Excel).");
+            // 2. Usar la librería XLSX (SheetJS) cargada globalmente
+            const ws = window.XLSX.utils.json_to_sheet(datosExcel);
+
+            // Ajustar ancho de columnas automáticamente (opcional pero estético)
+            const wscols = [
+                {wch: 15}, {wch: 10}, {wch: 40}, {wch: 8}, {wch: 12},
+                {wch: 10}, {wch: 10}, {wch: 10}, {wch: 10}, {wch: 10}, {wch: 10},
+                {wch: 10}, {wch: 10}, {wch: 10}, {wch: 10}, {wch: 10}, {wch: 10},
+                {wch: 12}, {wch: 15}, {wch: 12}, {wch: 12}
+            ];
+            ws['!cols'] = wscols;
+
+            const wb = window.XLSX.utils.book_new();
+            window.XLSX.utils.book_append_sheet(wb, ws, "Depreciación 2025");
+
+            // 3. Descargar archivo .xlsx
+            const fecha = new Date().toISOString().split('T')[0];
+            window.XLSX.writeFile(wb, `Reporte_Depreciacion_${fecha}.xlsx`);
+
+            mostrarMensaje("success", "Archivo .xlsx generado correctamente.");
+        };
+
+        // Lógica de carga dinámica de la librería
+        if (window.XLSX) {
+            generarArchivo();
+        } else {
+            mostrarMensaje("success", "Preparando motor de Excel...");
+            const script = document.createElement('script');
+            script.src = "https://cdn.sheetjs.com/xlsx-latest/package/dist/xlsx.full.min.js";
+            script.async = true;
+            script.onload = () => {
+                setLibreriaExcelCargada(true);
+                generarArchivo();
+            };
+            script.onerror = () => {
+                mostrarMensaje("error", "No se pudo cargar la librería de Excel. Verifica tu conexión.");
+            };
+            document.body.appendChild(script);
+        }
     };
 
     const mostrarMensaje = (tipo, texto) => {
@@ -246,15 +285,15 @@ function App() {
                     </div>
 
                     <div className="flex gap-2">
-                        {/* BOTÓN DE EXPORTAR CSV */}
+                        {/* BOTÓN DE EXPORTAR EXCEL (.XLSX) */}
                         <button
                             onClick={exportarExcel}
                             disabled={loading || activosFiltrados.length === 0}
                             className="flex items-center gap-2 px-4 py-2 bg-emerald-600 hover:bg-emerald-500 active:bg-emerald-700 rounded-lg text-sm font-medium transition-all shadow-md hover:shadow-lg border border-emerald-500 text-white disabled:opacity-50 disabled:cursor-not-allowed"
-                            title="Descargar tabla actual en CSV (Compatible con Excel)"
+                            title="Descargar tabla actual en formato Excel real (.xlsx)"
                         >
                             <Download size={16} />
-                            <span className="hidden sm:inline">Exportar</span>
+                            <span className="hidden sm:inline">Exportar .xlsx</span>
                         </button>
 
                         <button
