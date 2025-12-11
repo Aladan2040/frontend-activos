@@ -15,10 +15,12 @@ import {
     Database,
     TrendingUp,
     Wallet,
-    PieChart
+    PieChart,
+    Download
 } from 'lucide-react';
 
-// URL dinámica: Usa la variable de entorno en la nube, o localhost en tu PC
+// URL dinámica (Vite usa import.meta.env para variables de entorno)
+// Nota: Si esto falla en entornos antiguos, usa http://localhost:8080/api/activos directamente.
 const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:8080/api/activos';
 
 function App() {
@@ -79,7 +81,6 @@ function App() {
         setMesSeleccionado(numeroMes);
 
         try {
-            // Ajuste para llamar al endpoint correcto, ya que API_URL termina en /api/activos
             const response = await fetch(`${API_URL}/calcular/${numeroMes}`, { method: 'POST' });
 
             if (response.ok) {
@@ -94,6 +95,53 @@ function App() {
         } finally {
             setCalculando(false);
         }
+    };
+
+    // --- FUNCIÓN EXPORTAR A CSV (Nativa, sin librerías externas) ---
+    const exportarExcel = () => {
+        if (activosFiltrados.length === 0) {
+            mostrarMensaje("error", "No hay datos para exportar.");
+            return;
+        }
+
+        // 1. Definir Cabeceras
+        const headers = [
+            "Codigo", "CeCo", "Descripcion", "% Depre", "Acum. Inicio",
+            "Ene-25", "Feb-25", "Mar-25", "Abr-25", "May-25", "Jun-25",
+            "Jul-25", "Ago-25", "Set-25", "Oct-25", "Nov-25", "Dic-25",
+            "Total 2025", "Total Acumulado", "Costo Neto", "Valor Historico"
+        ];
+
+        // 2. Construir el contenido CSV
+        const csvContent = [
+            headers.join(','), // Fila de títulos
+            ...activosFiltrados.map(a => [
+                `"${a.codigo}"`, // Comillas para evitar romper el CSV si hay comas en el dato
+                `"${a.ceco || ""}"`,
+                `"${(a.descripcion || "").replace(/"/g, '""')}"`, // Escapar comillas dobles internas
+                `"${a.porcentajeDepreciacion ? (a.porcentajeDepreciacion * 100).toFixed(0) + '%' : '0%'}"`,
+                a.depAcumuladaInicio,
+                a.ene || 0, a.feb || 0, a.mar || 0, a.abr || 0, a.may || 0, a.jun || 0,
+                a.jul || 0, a.ago || 0, a.set || 0, a.oct || 0, a.nov || 0, a.dic || 0,
+                a.totalDepreciacion2025,
+                a.totalDepreciacionAcumulada,
+                a.costoNeto,
+                a.valorHistorico
+            ].join(','))
+        ].join('\n');
+
+        // 3. Crear Blob y descargar
+        const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+        const url = URL.createObjectURL(blob);
+        const link = document.createElement('a');
+        link.href = url;
+        const fecha = new Date().toISOString().split('T')[0];
+        link.setAttribute('download', `Reporte_Depreciacion_${fecha}.csv`);
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+
+        mostrarMensaje("success", "Archivo CSV exportado correctamente (Compatible con Excel).");
     };
 
     const mostrarMensaje = (tipo, texto) => {
@@ -135,7 +183,6 @@ function App() {
         );
     }, [activos, busqueda]);
 
-    // Cálculo de Totales Generales
     const totales = useMemo(() => {
         return activosFiltrados.reduce((acc, curr) => ({
             depAcumuladaInicio: acc.depAcumuladaInicio + (curr.depAcumuladaInicio || 0),
@@ -198,14 +245,27 @@ function App() {
                         />
                     </div>
 
-                    <button
-                        onClick={fetchData}
-                        disabled={loading}
-                        className="flex items-center gap-2 px-4 py-2 bg-slate-700 hover:bg-slate-600 active:bg-slate-800 rounded-lg text-sm font-medium transition-all shadow-md hover:shadow-lg border border-slate-600"
-                    >
-                        <RefreshCw size={16} className={loading ? "animate-spin" : ""} />
-                        {loading ? "Cargando..." : "Resetear"}
-                    </button>
+                    <div className="flex gap-2">
+                        {/* BOTÓN DE EXPORTAR CSV */}
+                        <button
+                            onClick={exportarExcel}
+                            disabled={loading || activosFiltrados.length === 0}
+                            className="flex items-center gap-2 px-4 py-2 bg-emerald-600 hover:bg-emerald-500 active:bg-emerald-700 rounded-lg text-sm font-medium transition-all shadow-md hover:shadow-lg border border-emerald-500 text-white disabled:opacity-50 disabled:cursor-not-allowed"
+                            title="Descargar tabla actual en CSV (Compatible con Excel)"
+                        >
+                            <Download size={16} />
+                            <span className="hidden sm:inline">Exportar</span>
+                        </button>
+
+                        <button
+                            onClick={fetchData}
+                            disabled={loading}
+                            className="flex items-center gap-2 px-4 py-2 bg-slate-700 hover:bg-slate-600 active:bg-slate-800 rounded-lg text-sm font-medium transition-all shadow-md hover:shadow-lg border border-slate-600"
+                        >
+                            <RefreshCw size={16} className={loading ? "animate-spin" : ""} />
+                            {loading ? "Cargando..." : "Resetear"}
+                        </button>
+                    </div>
                 </div>
             </header>
 
