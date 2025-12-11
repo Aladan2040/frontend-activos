@@ -463,7 +463,7 @@ function App() {
                                             {formatearDinero(activo.totalDepreciacionAcumulada)}
                                         </td>
                                         <td className="p-2 text-right font-black text-slate-900 bg-gray-100 border-l border-gray-200">
-                                            {formatearDinero(totales.costoNeto)}
+                                            {formatearDinero(activo.costoNeto)}
                                         </td>
                                         <td className="p-2 text-right text-xs text-gray-400 border-l border-gray-100">
                                             {formatearDinero(activo.valorHistorico)}
