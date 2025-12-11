@@ -43,6 +43,9 @@ function App() {
     const [filasPorPagina, setFilasPorPagina] = useState(50);
     const [inputPagina, setInputPagina] = useState(1);
 
+    // Estado para controlar la carga de la librería de Excel
+    const [libreriaExcelCargada, setLibreriaExcelCargada] = useState(false);
+
     useEffect(() => {
         fetchData();
     }, []);
@@ -104,7 +107,7 @@ function App() {
         }
     };
 
-    // --- EXPORTAR A EXCEL (Orden Actualizado) ---
+    // --- FUNCIÓN EXPORTAR A .XLSX (REAL) USANDO CDN ---
     const exportarExcel = () => {
         if (activosFiltrados.length === 0) {
             mostrarMensaje("error", "No hay datos para exportar.");
@@ -112,81 +115,56 @@ function App() {
         }
 
         const generarArchivo = () => {
-            // 1. Preparar datos en JSON plano (Orden modificado)
+            // 1. Preparar los datos en formato JSON plano (Orden modificado)
             const datosExcel = activosFiltrados.map(a => ({
                 "Código": a.codigo,
                 "CeCo": a.ceco || "",
-                "Valor Histórico": a.valorHistorico, // MOVIDO AQUÍ
                 "Descripción": a.descripcion,
+                "Valor Histórico": a.valorHistorico, // MOVIDO AQUÍ (Después de Descripción)
                 "% Depre": a.porcentajeDepreciacion ? (a.porcentajeDepreciacion * 100).toFixed(0) + '%' : '0%',
                 "Acum. Inicio": a.depAcumuladaInicio,
 
-                "Ene-25": a.ene || 0, "Feb-25": a.feb || 0, "Mar-25": a.mar || 0,
-                "Abr-25": a.abr || 0, "May-25": a.may || 0, "Jun-25": a.jun || 0,
-                "Jul-25": a.jul || 0, "Ago-25": a.ago || 0, "Set-25": a.set || 0,
-                "Oct-25": a.oct || 0, "Nov-25": a.nov || 0, "Dic-25": a.dic || 0,
+                "Ene-25": a.ene || 0,
+                "Feb-25": a.feb || 0,
+                "Mar-25": a.mar || 0,
+                "Abr-25": a.abr || 0,
+                "May-25": a.may || 0,
+                "Jun-25": a.jun || 0,
+                "Jul-25": a.jul || 0,
+                "Ago-25": a.ago || 0,
+                "Set-25": a.set || 0,
+                "Oct-25": a.oct || 0,
+                "Nov-25": a.nov || 0,
+                "Dic-25": a.dic || 0,
 
                 "Total 2025": a.totalDepreciacion2025,
                 "Total Acumulado": a.totalDepreciacionAcumulada,
                 "Costo Neto": a.costoNeto
             }));
 
-            if (window.XLSX) {
-                const ws = window.XLSX.utils.json_to_sheet(datosExcel);
+            // 2. Usar la librería XLSX (SheetJS) cargada globalmente
+            const ws = window.XLSX.utils.json_to_sheet(datosExcel);
 
-                // Ajustar anchos
-                const wscols = [
-                    {wch: 15}, {wch: 10}, {wch: 12}, {wch: 40}, {wch: 8}, {wch: 12}, // Ajustado para nuevo orden
-                    {wch: 10}, {wch: 10}, {wch: 10}, {wch: 10}, {wch: 10}, {wch: 10},
-                    {wch: 10}, {wch: 10}, {wch: 10}, {wch: 10}, {wch: 10}, {wch: 10},
-                    {wch: 12}, {wch: 15}, {wch: 12}
-                ];
-                ws['!cols'] = wscols;
+            // Ajustar ancho de columnas automáticamente (opcional pero estético)
+            const wscols = [
+                {wch: 15}, {wch: 10}, {wch: 40}, {wch: 12}, {wch: 8}, {wch: 12}, // Ajustado para nuevo orden
+                {wch: 10}, {wch: 10}, {wch: 10}, {wch: 10}, {wch: 10}, {wch: 10},
+                {wch: 10}, {wch: 10}, {wch: 10}, {wch: 10}, {wch: 10}, {wch: 10},
+                {wch: 12}, {wch: 15}, {wch: 12}
+            ];
+            ws['!cols'] = wscols;
 
-                const wb = window.XLSX.utils.book_new();
-                window.XLSX.utils.book_append_sheet(wb, ws, "Depreciación 2025");
-                const fecha = new Date().toISOString().split('T')[0];
-                window.XLSX.writeFile(wb, `Reporte_Depreciacion_${fecha}.xlsx`);
-                mostrarMensaje("success", "Archivo .xlsx generado correctamente.");
-            } else {
-                // Fallback a CSV nativo si falla la CDN (También reordenado)
-                const headers = [
-                    "Código", "CeCo", "Valor Histórico", "Descripción", "% Depre", "Acum. Inicio", // MOVIDO AQUÍ
-                    "Ene-25", "Feb-25", "Mar-25", "Abr-25", "May-25", "Jun-25",
-                    "Jul-25", "Ago-25", "Set-25", "Oct-25", "Nov-25", "Dic-25",
-                    "Total 2025", "Total Acumulado", "Costo Neto"
-                ];
+            const wb = window.XLSX.utils.book_new();
+            window.XLSX.utils.book_append_sheet(wb, ws, "Depreciación 2025");
 
-                const csvRows = [
-                    headers.join(','),
-                    ...activosFiltrados.map(a => [
-                        `"${a.codigo || ""}"`,
-                        `"${a.ceco || ""}"`,
-                        a.valorHistorico || 0, // MOVIDO AQUÍ
-                        `"${(a.descripcion || "").replace(/"/g, '""')}"`,
-                        `"${a.porcentajeDepreciacion ? (a.porcentajeDepreciacion * 100).toFixed(0) + '%' : '0%'}"`,
-                        a.depAcumuladaInicio || 0,
-                        a.ene || 0, a.feb || 0, a.mar || 0, a.abr || 0, a.may || 0, a.jun || 0,
-                        a.jul || 0, a.ago || 0, a.set || 0, a.oct || 0, a.nov || 0, a.dic || 0,
-                        a.totalDepreciacion2025 || 0,
-                        a.totalDepreciacionAcumulada || 0,
-                        a.costoNeto || 0
-                    ].join(','))
-                ];
+            // 3. Descargar archivo .xlsx
+            const fecha = new Date().toISOString().split('T')[0];
+            window.XLSX.writeFile(wb, `Reporte_Depreciacion_${fecha}.xlsx`);
 
-                const blob = new Blob(["\uFEFF" + csvRows.join('\n')], { type: 'text/csv;charset=utf-8;' });
-                const url = URL.createObjectURL(blob);
-                const link = document.createElement('a');
-                link.href = url;
-                const fecha = new Date().toISOString().split('T')[0];
-                link.setAttribute('download', `Reporte_Depreciacion_${fecha}.csv`);
-                document.body.appendChild(link);
-                link.click();
-                document.body.removeChild(link);
-                mostrarMensaje("success", "Archivo CSV generado (Fallback).");
-            }
+            mostrarMensaje("success", "Archivo .xlsx generado correctamente.");
         };
 
+        // Lógica de carga dinámica de la librería
         if (window.XLSX) {
             generarArchivo();
         } else {
@@ -405,19 +383,14 @@ function App() {
                                 <th className="p-3 sticky left-0 bg-slate-50 z-20 border-r border-gray-200 shadow-[4px_0_10px_-2px_rgba(0,0,0,0.05)]">
                                     <div className="flex flex-col">
                                         <span className="text-slate-700">Código / CeCo</span>
-                                        {/* --- COLUMNA DE VALOR HISTÓRICO MOVIDA AQUÍ --- */}
-                                        <div className="flex items-center gap-1 mt-1 text-slate-500 font-normal">
-                                            <span className="text-[10px]">Val. Hist:</span>
-                                            {/* Como es una cabecera agrupada, solo pongo el título, el dato va abajo */}
-                                        </div>
+                                        {/* --- Eliminado Valor Histórico de aquí --- */}
                                     </div>
                                 </th>
 
-                                {/* --- NUEVA COLUMNA DEDICADA PARA VALOR HISTÓRICO (Opcional si quieres separarla) --- */}
-                                {/* Si prefieres que sea una columna separada real, descomenta esto: */}
-                                <th className="p-3 text-right bg-slate-100 text-slate-700 border-r border-slate-200">Valor Hist.</th>
-
                                 <th className="p-3 bg-white border-r border-gray-200 min-w-[200px]">Detalle del Activo</th>
+
+                                {/* --- VALOR HISTÓRICO MOVIDO AQUÍ --- */}
+                                <th className="p-3 text-right bg-slate-100 text-slate-700 border-r border-slate-200">Valor Hist.</th>
 
                                 <th className="p-3 text-right bg-blue-50/50 text-blue-800 border-r border-blue-50">% Depre</th>
                                 <th className="p-3 text-right bg-orange-50/50 text-orange-800 border-r border-orange-50">Acum. Inicio</th>
@@ -446,7 +419,6 @@ function App() {
                                 <th className="p-3 text-right bg-emerald-50 text-emerald-900 border-l border-emerald-100">Total 2025</th>
                                 <th className="p-3 text-right bg-purple-50 text-purple-900 border-l border-purple-100">Total Acum.</th>
                                 <th className="p-3 text-right bg-gray-100 text-gray-900 font-black border-l border-gray-200">Costo Neto</th>
-                                {/* <th className="p-3 text-right text-gray-400 border-l border-gray-100">Valor Hist.</th>  <-- ELIMINADO DEL FINAL */}
                             </tr>
                             </thead>
 
@@ -472,13 +444,13 @@ function App() {
                                             </div>
                                         </td>
 
-                                        {/* --- NUEVA COLUMNA DE VALOR HISTÓRICO --- */}
-                                        <td className="p-2 text-right text-slate-600 bg-slate-50/50 font-mono border-r border-slate-100">
-                                            {formatearDinero(activo.valorHistorico)}
-                                        </td>
-
                                         <td className="p-2 border-r border-gray-100 max-w-md">
                                             <div className="text-[10px] text-slate-500 truncate" title={activo.descripcion}>{activo.descripcion || "Sin descripción"}</div>
+                                        </td>
+
+                                        {/* --- VALOR HISTÓRICO MOVIDO AQUÍ --- */}
+                                        <td className="p-2 text-right text-slate-600 bg-slate-50/50 font-mono border-r border-slate-100">
+                                            {formatearDinero(activo.valorHistorico)}
                                         </td>
 
                                         <td className="p-2 text-right font-medium text-blue-600 bg-blue-50/20 border-r border-blue-50/50">
@@ -504,9 +476,9 @@ function App() {
                                             {formatearDinero(activo.totalDepreciacionAcumulada)}
                                         </td>
                                         <td className="p-2 text-right font-black text-slate-900 bg-gray-100 border-l border-gray-200">
-                                            {formatearDinero(totales.costoNeto)}
+                                            {/* --- CORRECCIÓN CRÍTICA: USAR activo.costoNeto EN LUGAR DE totales.costoNeto --- */}
+                                            {formatearDinero(activo.costoNeto)}
                                         </td>
-                                        {/* Eliminada columna final de valor histórico */}
                                     </tr>
                                 ))
                             )}
