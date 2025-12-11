@@ -18,6 +18,7 @@ import {
     PieChart
 } from 'lucide-react';
 
+// URL dinámica: Usa la variable de entorno en la nube, o localhost en tu PC
 const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:8080/api/activos';
 
 function App() {
@@ -78,6 +79,7 @@ function App() {
         setMesSeleccionado(numeroMes);
 
         try {
+            // Ajuste para llamar al endpoint correcto, ya que API_URL termina en /api/activos
             const response = await fetch(`${API_URL}/calcular/${numeroMes}`, { method: 'POST' });
 
             if (response.ok) {
@@ -277,42 +279,42 @@ function App() {
                 <div className="bg-white rounded-xl shadow-sm border border-gray-200 flex flex-col h-full overflow-hidden">
                     <div className="overflow-auto flex-1 custom-scrollbar">
                         <table className="w-full text-xs text-left whitespace-nowrap relative">
-                            <thead className="bg-gradient-to-b from-slate-100 to-slate-50 text-slate-700 font-bold uppercase tracking-wider border-b-2 border-gray-300 sticky top-0 z-20">
+                            <thead className="bg-slate-50 text-slate-600 font-bold uppercase tracking-wider border-b border-gray-200 sticky top-0 z-20">
                             <tr>
-                                <th className="p-4 sticky left-0 bg-gradient-to-b from-slate-100 to-slate-50 z-20 border-r-2 border-gray-300 shadow-[4px_0_10px_-2px_rgba(0,0,0,0.1)]">
-                                    <div className="flex flex-col gap-1">
-                                        <span className="text-slate-800 text-sm font-black">Código</span>
-                                        <span className="text-[11px] text-slate-600 font-semibold">CeCo / Descripción</span>
+                                <th className="p-3 sticky left-0 bg-slate-50 z-20 border-r border-gray-200 shadow-[4px_0_10px_-2px_rgba(0,0,0,0.05)]">
+                                    <div className="flex flex-col">
+                                        <span className="text-slate-700">Código / CeCo</span>
+                                        <span className="text-[9px] text-gray-400 font-normal normal-case">Detalle del Activo</span>
                                     </div>
                                 </th>
-                                <th className="p-4 text-right bg-blue-100/60 text-blue-900 border-r-2 border-blue-200 text-sm font-bold">Depre %</th>
-                                <th className="p-4 text-right bg-orange-100/60 text-orange-900 border-r-2 border-orange-200 text-sm font-bold">Acum. Inicio</th>
+                                <th className="p-3 text-right bg-blue-50/50 text-blue-800 border-r border-blue-50">% Depre</th>
+                                <th className="p-3 text-right bg-orange-50/50 text-orange-800 border-r border-orange-50">Acum. Inicio</th>
 
                                 {mesesCols.map(m => {
                                     const esActivo = mesSeleccionado === m.num;
                                     return (
-                                        <th key={m.key} className={`p-3 min-w-[100px] text-center transition-all border-r-2 ${esActivo ? 'bg-emerald-200 border-emerald-400 shadow-md shadow-emerald-200' : 'bg-white border-gray-200 hover:bg-slate-50'}`}>
+                                        <th key={m.key} className={`p-1 min-w-[80px] text-center transition-all border-r border-gray-100 ${esActivo ? 'bg-emerald-100 border-emerald-200' : 'bg-white hover:bg-slate-50'}`}>
                                             <button
                                                 onClick={() => calcularMes(m.num)}
                                                 disabled={calculando}
-                                                className={`w-full h-full flex flex-col items-center justify-center py-2 gap-1.5 rounded transition-all ${esActivo ? 'text-emerald-900 font-black scale-105' : 'text-slate-500 hover:text-emerald-700 font-semibold'}`}
+                                                className={`w-full h-full flex flex-col items-center justify-center py-2 gap-1 rounded ${esActivo ? 'text-emerald-800' : 'text-slate-400 hover:text-emerald-600'}`}
                                                 title={`Calcular hasta ${m.label}`}
                                             >
-                                                <span className="text-sm">{m.label}</span>
+                                                <span className={`text-[10px] ${esActivo ? 'font-black' : ''}`}>{m.label}</span>
                                                 {calculando && esActivo ? (
-                                                    <RefreshCw size={14} className="animate-spin text-emerald-700" />
+                                                    <RefreshCw size={12} className="animate-spin text-emerald-600" />
                                                 ) : (
-                                                    <Play size={12} className={`transition-colors ${esActivo ? "fill-emerald-900 text-emerald-900" : "fill-current"}`} />
+                                                    <Play size={10} className={`transition-colors ${esActivo ? "fill-emerald-700 text-emerald-700" : "fill-current"}`} />
                                                 )}
                                             </button>
                                         </th>
                                     );
                                 })}
 
-                                <th className="p-4 text-right bg-emerald-100/60 text-emerald-900 border-l-2 border-emerald-200 text-sm font-bold">Total 2025</th>
-                                <th className="p-4 text-right bg-purple-100/60 text-purple-900 border-l-2 border-purple-200 text-sm font-bold">Total Acum.</th>
-                                <th className="p-4 text-right bg-gray-200 text-gray-900 border-l-2 border-gray-400 text-sm font-black">Costo Neto</th>
-                                <th className="p-4 text-right bg-gray-100 text-gray-700 border-l-2 border-gray-300 text-sm font-bold">Valor Histórico</th>
+                                <th className="p-3 text-right bg-emerald-50 text-emerald-900 border-l border-emerald-100">Total 2025</th>
+                                <th className="p-3 text-right bg-purple-50 text-purple-900 border-l border-purple-100">Total Acum.</th>
+                                <th className="p-3 text-right bg-gray-100 text-gray-900 font-black border-l border-gray-200">Costo Neto</th>
+                                <th className="p-3 text-right text-gray-400 border-l border-gray-100">Valor Hist.</th>
                             </tr>
                             </thead>
 
@@ -330,41 +332,41 @@ function App() {
                                 </tr>
                             ) : (
                                 activosActuales.map((activo, idx) => (
-                                    <tr key={idx} className="hover:bg-emerald-50 transition-colors group border-b border-gray-100">
-                                        <td className="p-3 sticky left-0 bg-white group-hover:bg-emerald-50 border-r-2 border-gray-300 min-w-[220px] max-w-[250px] overflow-hidden shadow-[4px_0_10px_-2px_rgba(0,0,0,0.05)]">
-                                            <div className="flex justify-between items-start gap-2 mb-1">
-                                                <span className="font-bold text-slate-800 truncate font-mono text-sm" title={activo.codigo}>{activo.codigo}</span>
-                                                <span className="text-xs px-2 py-1 bg-slate-100 rounded-md text-slate-600 font-bold flex-shrink-0" title="Centro de Costo">{activo.ceco || '-'}</span>
+                                    <tr key={idx} className="hover:bg-blue-50/50 transition-colors group">
+                                        <td className="p-2 sticky left-0 bg-white group-hover:bg-blue-50/50 border-r border-gray-100 max-w-xs overflow-hidden shadow-[4px_0_10px_-2px_rgba(0,0,0,0.02)]">
+                                            <div className="flex justify-between items-baseline gap-2">
+                                                <span className="font-bold text-slate-700 truncate font-mono text-[11px]" title={activo.codigo}>{activo.codigo}</span>
+                                                <span className="text-[9px] px-1.5 py-0.5 bg-slate-100 rounded text-slate-500 font-medium" title="Centro de Costo">{activo.ceco || '-'}</span>
                                             </div>
-                                            <div className="text-xs text-slate-600 line-clamp-2" title={activo.descripcion}>{activo.descripcion || "Sin descripción"}</div>
+                                            <div className="text-[10px] text-slate-500 truncate mt-0.5" title={activo.descripcion}>{activo.descripcion || "Sin descripción"}</div>
                                         </td>
 
-                                        <td className="p-3 text-right font-bold text-blue-700 bg-blue-50/30 border-r-2 border-blue-200 text-sm">
+                                        <td className="p-2 text-right font-medium text-blue-600 bg-blue-50/20 border-r border-blue-50/50">
                                             {activo.porcentajeDepreciacion ? `${(activo.porcentajeDepreciacion * 100).toFixed(0)}%` : '0%'}
                                         </td>
 
-                                        <td className="p-3 text-right text-slate-700 bg-orange-50/30 font-semibold border-r-2 border-orange-200 text-sm font-mono">
+                                        <td className="p-2 text-right text-slate-600 bg-orange-50/20 font-mono border-r border-orange-50/50">
                                             {formatearDinero(activo.depAcumuladaInicio)}
                                         </td>
 
                                         {mesesCols.map(m => (
-                                            <td key={m.key} className={`p-3 text-right font-mono text-slate-700 border-r border-dotted border-gray-200 text-sm transition-colors ${mesSeleccionado === m.num ? 'bg-emerald-100/50 text-emerald-900 font-bold border-r-2 border-emerald-300' : 'bg-white hover:bg-slate-50'}`}>
-                           <span className={activo[m.key] > 0 ? "text-slate-900 font-bold" : "text-gray-400 font-medium"}>
+                                            <td key={m.key} className={`p-2 text-right font-mono text-slate-500 border-r border-dotted border-gray-100 ${mesSeleccionado === m.num ? 'bg-emerald-50/20 text-emerald-800 font-semibold' : ''}`}>
+                           <span className={activo[m.key] > 0 ? "text-slate-800 font-medium" : "text-gray-300"}>
                              {activo[m.key] ? formatearDinero(activo[m.key]) : '-'}
                            </span>
                                             </td>
                                         ))}
 
-                                        <td className="p-3 text-right font-bold text-emerald-800 bg-emerald-50/40 border-l-2 border-emerald-200 text-sm">
+                                        <td className="p-2 text-right font-bold text-emerald-700 bg-emerald-50/30 border-l border-emerald-100">
                                             {formatearDinero(activo.totalDepreciacion2025)}
                                         </td>
-                                        <td className="p-3 text-right font-bold text-purple-800 bg-purple-50/40 border-l-2 border-purple-200 text-sm">
+                                        <td className="p-2 text-right font-medium text-purple-700 bg-purple-50/30 border-l border-purple-100">
                                             {formatearDinero(activo.totalDepreciacionAcumulada)}
                                         </td>
-                                        <td className="p-3 text-right font-black text-slate-900 bg-gray-200/50 border-l-2 border-gray-400 text-sm">
-                                            {formatearDinero(activo.costoNeto)}
+                                        <td className="p-2 text-right font-black text-slate-900 bg-gray-100 border-l border-gray-200">
+                                            {formatearDinero(totales.costoNeto)}
                                         </td>
-                                        <td className="p-3 text-right text-slate-700 border-l-2 border-gray-300 text-sm font-semibold">
+                                        <td className="p-2 text-right text-xs text-gray-400 border-l border-gray-100">
                                             {formatearDinero(activo.valorHistorico)}
                                         </td>
                                     </tr>
